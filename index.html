@@ -1,0 +1,1174 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Voxel Launcher</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      html, body {
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+      }
+
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        min-height: 100vh;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        padding: 20px;
+        position: relative;
+      }
+
+      .background-canvas {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        z-index: -1;
+        display: block;
+      }
+
+      .container {
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(10px);
+        border-radius: 20px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        padding: 40px;
+        width: 100%;
+        max-width: 700px;
+        animation: slideUp 0.5s ease-out;
+      }
+
+      @keyframes slideUp {
+        from {
+          opacity: 0;
+          transform: translateY(30px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      h1 {
+        color: #333;
+        text-align: center;
+        margin-bottom: 30px;
+        font-size: 32px;
+        font-weight: 700;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+      }
+
+      .form-group {
+        margin-bottom: 20px;
+      }
+
+      label {
+        display: block;
+        margin-bottom: 8px;
+        color: #555;
+        font-weight: 600;
+        font-size: 14px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+
+      input,
+      select {
+        width: 100%;
+        padding: 12px 16px;
+        border: 2px solid rgba(255, 255, 255, 0.3);
+        border-radius: 10px;
+        font-size: 16px;
+        transition: all 0.3s ease;
+        background: rgba(255, 255, 255, 0.7);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        color: #333;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+      }
+
+      select {
+        cursor: pointer;
+        appearance: none;
+        -webkit-appearance: none;
+        -moz-appearance: none;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23333' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 16px center;
+        padding-right: 40px;
+      }
+
+      input:focus,
+      select:focus {
+        outline: none;
+        border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+      }
+
+      input::placeholder {
+        color: #999;
+      }
+
+      .launch-button {
+        width: 100%;
+        padding: 16px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        border-radius: 10px;
+        font-size: 18px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        margin-top: 10px;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+      }
+
+      .launch-button:hover:not(:disabled) {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+      }
+
+      .launch-button:active:not(:disabled) {
+        transform: translateY(0);
+      }
+
+      .launch-button:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+      }
+
+      .progress-container {
+        margin-top: 20px;
+        padding: 15px;
+        background: #f5f5f5;
+        border-radius: 10px;
+        min-height: 50px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .progress-text {
+        color: #666;
+        font-size: 14px;
+        text-align: center;
+      }
+
+      .progress-bar {
+        width: 100%;
+        height: 8px;
+        background: #e0e0e0;
+        border-radius: 4px;
+        overflow: hidden;
+        margin-top: 10px;
+        display: none;
+      }
+
+      .progress-bar.active {
+        display: block;
+      }
+
+      .progress-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+        width: 0%;
+        transition: width 0.3s ease;
+        border-radius: 4px;
+      }
+
+      .error {
+        color: #e74c3c;
+        background: #fee;
+        padding: 12px;
+        border-radius: 8px;
+        margin-top: 10px;
+        border-left: 4px solid #e74c3c;
+      }
+
+      .success {
+        color: #27ae60;
+        background: #efe;
+        padding: 12px;
+        border-radius: 8px;
+        margin-top: 10px;
+        border-left: 4px solid #27ae60;
+      }
+
+      .settings-button {
+        position: absolute;
+        top: 20px;
+        right: 20px;
+        background: rgba(255, 255, 255, 0.9);
+        border: none;
+        border-radius: 50%;
+        width: 50px;
+        height: 50px;
+        cursor: pointer;
+        font-size: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        transition: all 0.3s ease;
+      }
+
+      .settings-button:hover {
+        background: rgba(255, 255, 255, 1);
+        transform: rotate(90deg);
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+      }
+
+      .settings-modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.7);
+        backdrop-filter: blur(5px);
+        z-index: 1000;
+        align-items: center;
+        justify-content: center;
+        animation: fadeIn 0.3s ease;
+      }
+
+      .settings-modal.active {
+        display: flex;
+      }
+
+      @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+      }
+
+      .settings-content {
+        background: white;
+        border-radius: 20px;
+        padding: 40px;
+        max-width: 600px;
+        width: 90%;
+        max-height: 80vh;
+        overflow-y: auto;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+        animation: slideUp 0.3s ease;
+      }
+
+      .settings-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 30px;
+      }
+
+      .settings-header h2 {
+        color: #333;
+        font-size: 28px;
+        font-weight: 700;
+      }
+
+      .close-button {
+        background: none;
+        border: none;
+        font-size: 32px;
+        cursor: pointer;
+        color: #999;
+        transition: color 0.3s ease;
+        width: 40px;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+      }
+
+      .close-button:hover {
+        color: #333;
+        background: #f0f0f0;
+      }
+
+      .settings-section {
+        margin-bottom: 30px;
+        padding-bottom: 20px;
+        border-bottom: 1px solid #e0e0e0;
+      }
+
+      .settings-section:last-child {
+        border-bottom: none;
+      }
+
+      .settings-section h3 {
+        color: #555;
+        font-size: 18px;
+        margin-bottom: 15px;
+        font-weight: 600;
+      }
+
+      .theme-options {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 15px;
+      }
+
+      .theme-option {
+        padding: 15px;
+        border: 2px solid #e0e0e0;
+        border-radius: 10px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        text-align: center;
+      }
+
+      .theme-option:hover {
+        border-color: #667eea;
+        transform: translateY(-2px);
+      }
+
+      .theme-option.active {
+        border-color: #667eea;
+        background: rgba(102, 126, 234, 0.1);
+      }
+
+      .theme-option-name {
+        font-weight: 600;
+        margin-bottom: 5px;
+        color: #333;
+      }
+
+      .theme-option-desc {
+        font-size: 12px;
+        color: #999;
+      }
+
+      .ram-slider-container {
+        margin-top: 15px;
+      }
+
+      .ram-display {
+        text-align: center;
+        font-size: 24px;
+        font-weight: 700;
+        color: #667eea;
+        margin: 15px 0;
+      }
+
+      input[type="range"] {
+        width: 100%;
+        height: 8px;
+        border-radius: 5px;
+        background: #e0e0e0;
+        outline: none;
+        -webkit-appearance: none;
+        appearance: none;
+      }
+
+      input[type="range"]::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        background: #667eea;
+        cursor: pointer;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+      }
+
+      input[type="range"]::-moz-range-thumb {
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        background: #667eea;
+        cursor: pointer;
+        border: none;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+      }
+
+      .directory-button {
+        width: 100%;
+        padding: 12px;
+        background: #f5f5f5;
+        border: 2px solid #e0e0e0;
+        border-radius: 10px;
+        font-size: 16px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+      }
+
+      .directory-button:hover {
+        background: #667eea;
+        color: white;
+        border-color: #667eea;
+      }
+
+      /* Theme styles */
+      body.theme-dark {
+        color: #fff;
+      }
+
+      body.theme-dark .container {
+        background: rgba(30, 30, 30, 0.95);
+        color: #fff;
+      }
+
+      body.theme-dark h1 {
+        color: #fff;
+      }
+
+      body.theme-dark label {
+        color: #ccc;
+      }
+
+      body.theme-dark input,
+      body.theme-dark select {
+        background: #2a2a2a;
+        border-color: #444;
+        color: #fff;
+      }
+
+      body.theme-dark .settings-content {
+        background: #2a2a2a;
+        color: #fff;
+      }
+
+      body.theme-dark .settings-header h2 {
+        color: #fff;
+      }
+
+      body.theme-dark .theme-option {
+        background: #333;
+        border-color: #555;
+        color: #fff;
+      }
+
+      body.theme-dark .theme-option.active {
+        background: rgba(102, 126, 234, 0.3);
+      }
+
+      body.theme-dark .directory-button {
+        background: #333;
+        border-color: #555;
+        color: #fff;
+      }
+
+      body.theme-light .container {
+        background: rgba(255, 255, 255, 0.98);
+      }
+
+      /* Toggle Switch */
+      .toggle-switch {
+        position: relative;
+        display: inline-block;
+        width: 60px;
+        height: 30px;
+      }
+
+      .toggle-switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+      }
+
+      .toggle-slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: #ccc;
+        transition: 0.3s;
+        border-radius: 30px;
+      }
+
+      .toggle-slider:before {
+        position: absolute;
+        content: "";
+        height: 22px;
+        width: 22px;
+        left: 4px;
+        bottom: 4px;
+        background-color: white;
+        transition: 0.3s;
+        border-radius: 50%;
+      }
+
+      .toggle-switch input:checked + .toggle-slider {
+        background-color: #667eea;
+      }
+
+      .toggle-switch input:checked + .toggle-slider:before {
+        transform: translateX(30px);
+      }
+
+      body.theme-dark .settings-section > div[style*="background"] {
+        background: #333 !important;
+      }
+
+      body.theme-dark .settings-section > div[style*="background"] > div {
+        color: #fff !important;
+      }
+
+      body.theme-dark .settings-section > div[style*="background"] > div > div:last-child {
+        color: #ccc !important;
+      }
+    </style>
+  </head>
+  <body>
+    <canvas class="background-canvas"></canvas>
+    <button class="settings-button" id="settingsButton" title="Settings">⚙️</button>
+    <div class="container">
+      <h1>Voxel Launcher</h1>
+      
+      <div class="form-group">
+        <label for="username">Username</label>
+        <input
+          type="text"
+          id="username"
+          placeholder="Enter your username"
+          value="Player"
+          maxlength="16"
+        />
+      </div>
+
+      <div class="form-group">
+        <label for="version">Minecraft Version</label>
+        <select id="version">
+          <option value="">Loading versions...</option>
+        </select>
+      </div>
+
+      <button id="launch" class="launch-button">Launch Minecraft</button>
+
+      <div class="progress-container">
+        <div>
+          <div class="progress-text" id="progress">Ready to launch</div>
+          <div class="progress-bar" id="progressBar">
+            <div class="progress-fill" id="progressFill"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div class="settings-modal" id="settingsModal">
+      <div class="settings-content">
+        <div class="settings-header">
+          <h2>Settings</h2>
+          <button class="close-button" id="closeSettings">×</button>
+        </div>
+
+        <div class="settings-section">
+          <h3>Theme</h3>
+          <div class="theme-options">
+            <div class="theme-option" data-theme="default">
+              <div class="theme-option-name">Default</div>
+              <div class="theme-option-desc">Purple gradient</div>
+            </div>
+            <div class="theme-option" data-theme="dark">
+              <div class="theme-option-name">Dark</div>
+              <div class="theme-option-desc">Dark mode</div>
+            </div>
+            <div class="theme-option" data-theme="light">
+              <div class="theme-option-name">Light</div>
+              <div class="theme-option-desc">Light mode</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="settings-section">
+          <h3>RAM Allocation</h3>
+          <p style="color: #666; margin-bottom: 15px;">Allocate RAM for Minecraft (in MB)</p>
+          <div class="ram-slider-container">
+            <input type="range" id="ramSlider" min="1024" max="8192" step="512" value="2048">
+            <div class="ram-display" id="ramDisplay">2048 MB</div>
+            <div style="display: flex; justify-content: space-between; font-size: 12px; color: #999;">
+              <span>1 GB</span>
+              <span>8 GB</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="settings-section">
+          <h3>Version Filter</h3>
+          <div style="display: flex; align-items: center; justify-content: space-between; padding: 15px; background: #f5f5f5; border-radius: 10px;">
+            <div>
+              <div style="font-weight: 600; margin-bottom: 5px; color: #333;">Show Beta & Alpha Versions</div>
+              <div style="font-size: 12px; color: #999;">Include experimental versions in version list</div>
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" id="showBetaAlpha">
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+        </div>
+
+        <div class="settings-section">
+          <h3>Game Directories</h3>
+          <p style="color: #666; margin-bottom: 15px;">Open game directories in file explorer</p>
+          <button class="directory-button" id="openGameDir">
+            📁 Open Game Directory
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const button = document.getElementById("launch");
+      const progressEl = document.getElementById("progress");
+      const progressBar = document.getElementById("progressBar");
+      const progressFill = document.getElementById("progressFill");
+      const usernameInput = document.getElementById("username");
+      const versionSelect = document.getElementById("version");
+      const settingsButton = document.getElementById("settingsButton");
+      const settingsModal = document.getElementById("settingsModal");
+      const closeSettings = document.getElementById("closeSettings");
+      const ramSlider = document.getElementById("ramSlider");
+      const ramDisplay = document.getElementById("ramDisplay");
+      const openGameDirBtn = document.getElementById("openGameDir");
+      const themeOptions = document.querySelectorAll(".theme-option");
+      const showBetaAlphaToggle = document.getElementById("showBetaAlpha");
+
+      // Settings Modal Functions
+      settingsButton.addEventListener("click", () => {
+        settingsModal.classList.add("active");
+        loadSettingsValues();
+      });
+
+      closeSettings.addEventListener("click", () => {
+        settingsModal.classList.remove("active");
+      });
+
+      settingsModal.addEventListener("click", (e) => {
+        if (e.target === settingsModal) {
+          settingsModal.classList.remove("active");
+        }
+      });
+
+      // Theme Selection
+      function applyTheme(theme) {
+        document.body.className = "";
+        if (theme !== "default") {
+          document.body.classList.add(`theme-${theme}`);
+        }
+      }
+
+      themeOptions.forEach(option => {
+        option.addEventListener("click", () => {
+          const theme = option.dataset.theme;
+          applyTheme(theme);
+          saveUserPreferences({ theme });
+          
+          // Update active state
+          themeOptions.forEach(opt => opt.classList.remove("active"));
+          option.classList.add("active");
+        });
+      });
+
+      // RAM Slider
+      ramSlider.addEventListener("input", (e) => {
+        const ramMB = parseInt(e.target.value);
+        ramDisplay.textContent = `${ramMB} MB (${(ramMB / 1024).toFixed(1)} GB)`;
+        saveUserPreferences({ ramAllocation: ramMB });
+      });
+
+      // Open Game Directory
+      openGameDirBtn.addEventListener("click", async () => {
+        if (window.electronAPI) {
+          try {
+            await window.electronAPI.openGameDirectory();
+          } catch (error) {
+            console.error("Failed to open directory:", error);
+          }
+        }
+      });
+
+      // Beta/Alpha Toggle
+      showBetaAlphaToggle.addEventListener("change", async (e) => {
+        const showBetaAlpha = e.target.checked;
+        await saveUserPreferences({ showBetaAlpha });
+        await loadVersions();
+      });
+
+      // Load Settings Values
+      async function loadSettingsValues() {
+        const prefs = await loadPreferences();
+        if (prefs) {
+          // Set theme
+          const currentTheme = prefs.theme || "default";
+          applyTheme(currentTheme);
+          themeOptions.forEach(opt => {
+            opt.classList.toggle("active", opt.dataset.theme === currentTheme);
+          });
+
+          // Set RAM
+          const ram = prefs.ramAllocation || 2048;
+          ramSlider.value = ram;
+          ramDisplay.textContent = `${ram} MB (${(ram / 1024).toFixed(1)} GB)`;
+
+          // Set Beta/Alpha toggle
+          showBetaAlphaToggle.checked = prefs.showBetaAlpha || false;
+        }
+      }
+
+      // Load preferences
+      async function loadPreferences() {
+        if (!window.electronAPI) return null;
+        
+        try {
+          return await window.electronAPI.getPreferences();
+        } catch (error) {
+          console.error("Failed to load preferences:", error);
+          return null;
+        }
+      }
+
+      // Save preferences
+      async function saveUserPreferences(additionalPrefs = {}) {
+        if (!window.electronAPI) return;
+        
+        try {
+          const preferences = {
+            username: usernameInput.value.trim() || "Player",
+            version: versionSelect.value || null,
+            ...additionalPrefs
+          };
+          await window.electronAPI.savePreferences(preferences);
+        } catch (error) {
+          console.error("Failed to save preferences:", error);
+        }
+      }
+
+      // Load versions on startup
+      async function loadVersions() {
+        if (!window.electronAPI) {
+          versionSelect.innerHTML = '<option value="">API not available</option>';
+          return;
+        }
+
+        try {
+          const allVersions = await window.electronAPI.getVersions();
+          const prefs = await loadPreferences();
+          const showBetaAlpha = prefs?.showBetaAlpha || false;
+          
+          // Filter versions based on preference
+          const versions = showBetaAlpha 
+            ? allVersions 
+            : allVersions.filter(v => v.type === "release" || v.type === "snapshot");
+          
+          versionSelect.innerHTML = "";
+          
+          let selectedVersion = prefs?.version || null;
+          let hasSelected = false;
+          
+          versions.forEach((version) => {
+            const option = document.createElement("option");
+            option.value = version.id;
+            const typeLabel = version.type === "release" ? " (Latest)" : 
+                             version.type === "snapshot" ? " (Snapshot)" :
+                             version.type === "beta" ? " (Beta)" :
+                             version.type === "alpha" ? " (Alpha)" : "";
+            option.textContent = version.id + typeLabel;
+            
+            // Select saved version, or latest release if no saved version
+            if (selectedVersion && version.id === selectedVersion) {
+              option.selected = true;
+              hasSelected = true;
+            } else if (!hasSelected && !selectedVersion && version.type === "release" && versions.indexOf(version) === 0) {
+              option.selected = true;
+            }
+            
+            versionSelect.appendChild(option);
+          });
+          
+          // If saved version not found, select latest
+          if (selectedVersion && !hasSelected && versions.length > 0) {
+            const latestRelease = versions.find(v => v.type === "release");
+            if (latestRelease) {
+              versionSelect.value = latestRelease.id;
+            }
+          }
+        } catch (error) {
+          versionSelect.innerHTML = '<option value="">Error loading versions</option>';
+          console.error("Failed to load versions:", error);
+        }
+      }
+
+      // Set up download progress listener
+      if (window.electronAPI) {
+        window.electronAPI.onDownloadProgress((percent) => {
+          progressEl.textContent = `Downloading: ${percent.toFixed(2)}%`;
+          progressBar.classList.add("active");
+          progressFill.style.width = `${percent}%`;
+        });
+
+        // Handle game started/closed events
+        window.electronAPI.onGameStarted(() => {
+          button.disabled = true;
+          progressEl.textContent = "Minecraft is running...";
+        });
+
+        window.electronAPI.onGameClosed(() => {
+          button.disabled = false;
+          progressBar.classList.remove("active");
+          progressFill.style.width = "0%";
+          progressEl.textContent = "Ready to launch";
+          progressEl.className = "progress-text";
+        });
+      }
+
+      // Save preferences when username or version changes
+      usernameInput.addEventListener("input", () => {
+        saveUserPreferences();
+      });
+
+      versionSelect.addEventListener("change", () => {
+        saveUserPreferences();
+      });
+
+      button.addEventListener("click", async () => {
+        if (!window.electronAPI) {
+          showError("Error: Electron API not available");
+          return;
+        }
+
+        const username = usernameInput.value.trim() || "Player";
+        const version = versionSelect.value;
+
+        if (!version) {
+          showError("Please select a Minecraft version");
+          return;
+        }
+
+        if (username.length > 16) {
+          showError("Username must be 16 characters or less");
+          return;
+        }
+
+        // Save preferences before launching
+        await saveUserPreferences();
+
+        button.disabled = true;
+        progressBar.classList.add("active");
+        progressFill.style.width = "0%";
+        progressEl.textContent = "Starting download...";
+        progressEl.className = "progress-text";
+
+        // Get RAM allocation from preferences
+        const prefs = await loadPreferences();
+        const ramAllocation = prefs?.ramAllocation || 2048;
+
+        try {
+          const result = await window.electronAPI.launchMinecraft(version, username, ramAllocation);
+
+          if (result.success) {
+            progressEl.textContent = "Minecraft started!";
+            progressEl.className = "progress-text success";
+            progressFill.style.width = "100%";
+          } else {
+            showError(result.error);
+            button.disabled = false;
+            progressBar.classList.remove("active");
+          }
+        } catch (error) {
+          showError(error.message);
+          button.disabled = false;
+          progressBar.classList.remove("active");
+        }
+      });
+
+      function showError(message) {
+        progressEl.textContent = message;
+        progressEl.className = "progress-text error";
+      }
+
+      // Initialize on page load
+      (async () => {
+        // Load saved preferences first
+        const prefs = await loadPreferences();
+        if (prefs) {
+          if (prefs.username) {
+            usernameInput.value = prefs.username;
+          }
+          
+          // Apply theme
+          if (prefs.theme) {
+            applyTheme(prefs.theme);
+          }
+        }
+        
+        // Then load versions (which will also set the saved version)
+        await loadVersions();
+      })();
+
+      // WebGL Lava Lamp Background
+      window.addEventListener('load', () => {
+        const canvas = document.querySelector('.background-canvas');
+        const gl = canvas.getContext("webgl");
+        if (!gl) {
+          console.error("WebGL not supported");
+          return;
+        }
+
+        function updateCanvasSize() {
+          canvas.width = window.innerWidth;
+          canvas.height = window.innerHeight;
+          if (gl) {
+            gl.viewport(0, 0, canvas.width, canvas.height);
+          }
+        }
+
+        let width = canvas.width = window.innerWidth;
+        let height = canvas.height = window.innerHeight;
+
+        function resizeCanvas() {
+          width = canvas.width = window.innerWidth;
+          height = canvas.height = window.innerHeight;
+          gl.viewport(0, 0, width, height);
+        }
+        window.addEventListener("resize", resizeCanvas);
+        
+        // Ensure canvas fills viewport on load
+        updateCanvasSize();
+
+        let mouse = { x: width / 2, y: height / 2 };
+        function onMouseMove(e) {
+          mouse.x = e.clientX;
+          mouse.y = e.clientY;
+        }
+        window.addEventListener("mousemove", onMouseMove);
+
+        const circleColors = [
+          [18 / 255, 113 / 255, 1.0],
+          [221 / 255, 74 / 255, 1.0],
+          [100 / 255, 220 / 255, 1.0],
+          [200 / 255, 50 / 255, 50 / 255],
+          [180 / 255, 180 / 255, 50 / 255],
+          [140 / 255, 100 / 255, 1.0],
+        ];
+
+        let circles = [];
+        function initCircles() {
+          circles = [];
+          const baseRadius = (width + height) * 0.2;
+          for (let i = 0; i < 5; i++) {
+            const radius = baseRadius;
+            const x = Math.random() * width;
+            const y = Math.random() * height;
+            const speedMultiplier = Math.random() * 4 + 1;
+            const vx = (Math.random() - 0.5) * speedMultiplier;
+            const vy = (Math.random() - 0.5) * speedMultiplier;
+            circles.push({
+              x,
+              y,
+              radius,
+              color: circleColors[i],
+              vx,
+              vy,
+              interactive: false,
+            });
+          }
+
+          // interactive circle
+          const interactiveRadius = (width + height) * 0.1;
+          circles.push({
+            x: width / 2,
+            y: height / 2,
+            radius: interactiveRadius,
+            color: circleColors[5],
+            vx: 0,
+            vy: 0,
+            interactive: true,
+          });
+        }
+
+        initCircles();
+
+        const vertexSrc = `
+          attribute vec2 a_position;
+          varying vec2 v_uv;
+          void main(void) {
+            v_uv = a_position * 0.5 + 0.5; 
+            v_uv.y = 1.0 - v_uv.y; 
+            gl_Position = vec4(a_position, 0.0, 1.0);
+          }
+        `;
+
+        const fragmentSrc = `
+          precision mediump float;
+          varying vec2 v_uv;
+
+          uniform vec2 u_resolution;
+          uniform bool u_darkMode;
+          uniform int u_circleCount;
+          uniform vec3 u_circlesColor[6];
+          uniform vec3 u_circlesPosRad[6];
+          uniform vec2 u_mouse;
+
+          void main(void) {
+              vec2 st = v_uv * u_resolution;
+
+              vec3 topColor = vec3(108.0/255.0, 0.0, 162.0/255.0);
+              vec3 bottomColor = vec3(0.0, 17.0/255.0, 82.0/255.0);
+              vec3 bgColor = mix(topColor, bottomColor, st.y / u_resolution.y);
+
+              float fieldSum = 0.0;
+              vec3 weightedColorSum = vec3(0.0);
+              
+              for (int i = 0; i < 6; i++) {
+                  if (i >= u_circleCount) { break; }
+                  vec3 posRad = u_circlesPosRad[i];
+                  vec2 cPos = vec2(posRad.r, posRad.g);
+                  float radius = posRad.b;
+                  float dist = length(st - cPos);
+                  float sigma = radius * 0.5;
+                  float val = exp(- (dist * dist) / (2.0 * sigma * sigma));
+                  fieldSum += val;
+                  weightedColorSum += u_circlesColor[i] * val;
+              }
+
+              vec3 finalCirclesColor = vec3(0.0);
+              if (fieldSum > 0.0) {
+                finalCirclesColor = weightedColorSum / fieldSum;
+              }
+
+              float intensity = pow(fieldSum, 1.4);
+              vec3 finalColor = mix(bgColor, finalCirclesColor, clamp(intensity, 0.0, 1.0));
+              gl_FragColor = vec4(finalColor, 1.0);
+          }
+        `;
+
+        function createShader(type, source) {
+          const shader = gl.createShader(type);
+          gl.shaderSource(shader, source);
+          gl.compileShader(shader);
+          if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+            console.error("Shader compile error:", gl.getShaderInfoLog(shader));
+            gl.deleteShader(shader);
+            return null;
+          }
+          return shader;
+        }
+
+        const vertShader = createShader(gl.VERTEX_SHADER, vertexSrc);
+        const fragShader = createShader(gl.FRAGMENT_SHADER, fragmentSrc);
+
+        const program = gl.createProgram();
+        gl.attachShader(program, vertShader);
+        gl.attachShader(program, fragShader);
+        gl.linkProgram(program);
+        if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+          console.error("Program link error:", gl.getProgramInfoLog(program));
+        }
+
+        gl.useProgram(program);
+
+        const quadBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, quadBuffer);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+          -1, -1,
+          1, -1,
+          -1, 1,
+          1, 1,
+        ]), gl.STATIC_DRAW);
+
+        const positionLoc = gl.getAttribLocation(program, "a_position");
+        gl.enableVertexAttribArray(positionLoc);
+        gl.vertexAttribPointer(positionLoc, 2, gl.FLOAT, false, 0, 0);
+
+        const resolutionLoc = gl.getUniformLocation(program, "u_resolution");
+        const darkModeLoc = gl.getUniformLocation(program, "u_darkMode");
+        const circleCountLoc = gl.getUniformLocation(program, "u_circleCount");
+        const circlesColorLoc = gl.getUniformLocation(program, "u_circlesColor");
+        const circlesPosRadLoc = gl.getUniformLocation(program, "u_circlesPosRad");
+        const mouseLoc = gl.getUniformLocation(program, "u_mouse");
+
+        function animate() {
+          // Update interactive circle to follow mouse
+          const interactiveCircle = circles.find(c => c.interactive);
+          if (interactiveCircle) {
+            const dx = mouse.x - interactiveCircle.x;
+            const dy = mouse.y - interactiveCircle.y;
+            interactiveCircle.vx += dx * 0.01;
+            interactiveCircle.vy += dy * 0.01;
+            interactiveCircle.vx *= 0.9;
+            interactiveCircle.vy *= 0.9;
+            interactiveCircle.x += interactiveCircle.vx;
+            interactiveCircle.y += interactiveCircle.vy;
+          }
+
+          // Update other circles
+          circles.forEach(circle => {
+            if (!circle.interactive) {
+              circle.x += circle.vx;
+              circle.y += circle.vy;
+
+              if (circle.x < 0 || circle.x > width) circle.vx *= -1;
+              if (circle.y < 0 || circle.y > height) circle.vy *= -1;
+
+              circle.x = Math.max(0, Math.min(width, circle.x));
+              circle.y = Math.max(0, Math.min(height, circle.y));
+            }
+          });
+
+          // Update uniforms
+          gl.uniform2f(resolutionLoc, width, height);
+          gl.uniform1i(darkModeLoc, false);
+          gl.uniform1i(circleCountLoc, circles.length);
+
+          const colors = [];
+          const posRad = [];
+          circles.forEach(circle => {
+            colors.push(circle.color[0], circle.color[1], circle.color[2]);
+            posRad.push(circle.x, circle.y, circle.radius);
+          });
+
+          // WebGL doesn't support uniform arrays directly, so we set them individually
+          for (let i = 0; i < 6; i++) {
+            if (i < circles.length) {
+              gl.uniform3f(
+                gl.getUniformLocation(program, `u_circlesColor[${i}]`),
+                colors[i * 3], colors[i * 3 + 1], colors[i * 3 + 2]
+              );
+              gl.uniform3f(
+                gl.getUniformLocation(program, `u_circlesPosRad[${i}]`),
+                posRad[i * 3], posRad[i * 3 + 1], posRad[i * 3 + 2]
+              );
+            }
+          }
+
+          gl.uniform2f(mouseLoc, mouse.x, mouse.y);
+
+          // Draw
+          gl.clear(gl.COLOR_BUFFER_BIT);
+          gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+
+          requestAnimationFrame(animate);
+        }
+
+        animate();
+      });
+    </script>
+  </body>
+</html>
