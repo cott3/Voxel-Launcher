@@ -6,7 +6,8 @@ The **Voxel Launcher** is a JavaScript-based minimal launcher for Minecraft. The
 
 ## JAVA
 
-Launcher curently supports all version of java
+Launcher curently supports all version of java from **https://adoptium.net/**
+other java platform support comeing soon.
 
 ---
 
