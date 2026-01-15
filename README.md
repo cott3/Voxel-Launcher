@@ -14,7 +14,7 @@ Launcher curently supports all Java platforms but you need to install Java 8-17-
 
 You can download from rleases and install it using the installer.
 
-The launcher currently **only supports Windows**,cross platform support comeing soon for Linux.
+The launcher currently supports **Windows and Linux** Mac OS support will come soon. 
 
 ---
 
