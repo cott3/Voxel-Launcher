@@ -415,22 +415,21 @@ function getJavaVersion(javaPath = "java") {
       timeout: 5000
     });
 
-    // Match full version string
-    const match = output.match(/version\s+"([^"]+)"/);
-    if (!match) return null;
-
-    const versionStr = match[1];
-
-    // Java 8 and below: "1.8.0_xxx"
-    if (versionStr.startsWith("1.")) {
-      return parseInt(versionStr.split(".")[1], 10);
+    // Java 8 format: "1.8.0_xxx"
+    const legacy = output.match(/version\s+"1\.(\d+)/);
+    if (legacy) {
+      return parseInt(legacy[1], 10);
     }
 
-    // Java 9+
-    return parseInt(versionStr.split(".")[0], 10);
+    // Java 9+ format: "17.0.10", "21.0.1", etc
+    const modern = output.match(/version\s+"(\d+)/);
+    if (modern) {
+      return parseInt(modern[1], 10);
+    }
   } catch {
     return null;
   }
+  return null;
 }
 
 
@@ -691,7 +690,7 @@ function buildClassPath(version, versionData) {
   return classPath.join(path.delimiter);
 }
 
-function launchMinecraft(versionId, username, ramAllocation, onProgress) {
+function launchMinecraft(versionId, account, username, ramAllocation, onProgress) {
   // Handle backward compatibility
   if (typeof versionId === "function") {
     onProgress = versionId;
@@ -765,7 +764,7 @@ function launchMinecraft(versionId, username, ramAllocation, onProgress) {
       if (availableJava.length === 0) {
         reject(new Error(
           `No Java installation found. Please install Java ${requiredJavaVersion} or later.\n` +
-          `You can download it from: https://adoptium.net/,https://www.java.com/tr/ or https://www.azul.com/downloads/?package=jdk#zulu`
+          `You can download it from: https://adoptium.net/`
         ));
         return;
       }
@@ -795,6 +794,35 @@ function launchMinecraft(versionId, username, ramAllocation, onProgress) {
       // Get main class
       const mainClass = versionData.mainClass || "net.minecraft.client.main.Main";
       
+      //+++++++++++Auth args++++++++++++
+      const { getSelectedAccount } = require("./accounts");
+
+const account = getSelectedAccount();
+
+if (!account) {
+  throw new Error("No account selected");
+}
+
+let authArgs;
+
+if (account.type === "microsoft") {
+  authArgs = [
+    "--username", account.username,
+    "--uuid", account.uuid,
+    "--accessToken", account.accessToken,
+    "--userType", "msa"
+  ];
+} else {
+  // Offline account
+  authArgs = [
+    "--username", account.username,
+    "--uuid", "00000000-0000-0000-0000-000000000000",
+    "--accessToken", "0",
+    "--userType", "legacy"
+  ];
+}
+
+               
       // Build JVM arguments
       const jvmArgs = [
         `-Xmx${ramAllocation}M`,
@@ -807,10 +835,9 @@ function launchMinecraft(versionId, username, ramAllocation, onProgress) {
         "--gameDir", MINECRAFT_DIR,
         "--assetsDir", ASSETS_DIR,
         "--assetIndex", versionData.assetIndex?.id || "",
-        "--username", username,
-        "--userProperties", "{}",   // ✅ REQUIRED FOR OLD VERSIONS
-        "--accessToken", "0",
-        "--userType", "legacy",
+      
+        ...authArgs,
+      
         "--versionType", "release"
       ];
       
@@ -841,4 +868,5 @@ function launchMinecraft(versionId, username, ramAllocation, onProgress) {
   });
 }
 
-module.exports = { launchMinecraft, getVersions };
+module.exports = { launchMinecraft, getVersions, findAllJavaInstallations };
+
