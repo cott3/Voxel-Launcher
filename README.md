@@ -4,6 +4,12 @@ The **Voxel Launcher** is a JavaScript-based minimal launcher for Minecraft. The
 
 ---
 
+##IMPORTANT
+
+When you open the launcher, smartscreen may block the launcher.Thats normal for unlicenced aplications.
+
+---
+
 ## JAVA
 
 Launcher curently supports all Java platforms but you need to install Java 8-17-21.
