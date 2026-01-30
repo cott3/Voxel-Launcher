@@ -69,7 +69,7 @@ sudo dnf install nodejs npm java-17-openjdk
 
 ### 📥 CLONE THE REPOSITORY
 ```bash
-git clone https://github.com/YOUR_USERNAME/voxel-launcher.git
+git clone https://github.com/DreamingNice/voxel-launcher.git
 cd voxel-launcher
 ```
 
