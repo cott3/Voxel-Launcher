@@ -64,7 +64,7 @@ sudo pacman -S nodejs npm jre17-openjdk
 ```bash
 sudo dnf install nodejs npm java-17-openjdk
 ```
-
+• Also install other java platforms (8 & 21)
 ---
 
 ### 📥 CLONE THE REPOSITORY
