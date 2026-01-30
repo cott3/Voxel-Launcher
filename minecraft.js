@@ -172,23 +172,82 @@ async function downloadLibraries(versionData, onProgress) {
   const libraries = versionData.libraries.filter(shouldUseLibrary);
   const total = libraries.length;
   let completed = 0;
+  let downloadedCount = 0;
+  let skippedCount = 0;
+
+  // Fallback Maven repositories for old libraries
+  const MAVEN_REPOS = [
+    'https://libraries.minecraft.net',
+    'https://maven.minecraftforge.net',
+    'https://repo1.maven.org/maven2',
+    'https://maven.codehaus.org/maven2',
+    'https://oss.sonatype.org/content/repositories/public'
+  ];
 
   for (const library of libraries) {
-    // Download main library artifact
+    let downloadUrl = null;
+    let libPath = null;
+    let libFilePath = null;
+    
+    // Method 1: Use downloads.artifact if available (newer versions)
     if (library.downloads && library.downloads.artifact) {
-      const libPath = parseLibraryPath(library);
-      const libFilePath = path.join(LIBRARIES_DIR, libPath);
-      const libUrl = library.downloads.artifact.url;
-
-      try {
-        await downloadFile(libUrl, libFilePath, (progress) => {
-          if (onProgress) {
-            const overallProgress = (completed / total) * 100 + (progress / total);
-            onProgress(overallProgress);
+      libPath = parseLibraryPath(library);
+      libFilePath = path.join(LIBRARIES_DIR, libPath);
+      downloadUrl = library.downloads.artifact.url;
+    } else if (library.name) {
+      // Method 2: Construct URL from library name (older versions like 1.8)
+      libPath = parseLibraryPath(library);
+      libFilePath = path.join(LIBRARIES_DIR, libPath);
+      // Will try multiple Maven repos
+    }
+    
+    // Download main library artifact
+    if (libFilePath) {
+      let downloaded = false;
+      
+      if (downloadUrl) {
+        // Try the direct URL first
+        try {
+          await downloadFile(downloadUrl, libFilePath, (progress) => {
+            if (onProgress) {
+              const overallProgress = (completed / total) * 100 + (progress / total);
+              onProgress(overallProgress);
+            }
+          });
+          downloadedCount++;
+          downloaded = true;
+        } catch (error) {
+          console.warn(`Direct URL failed for ${library.name}, trying fallback repos...`);
+        }
+      }
+      
+      // If direct URL failed or doesn't exist, try fallback repos
+      if (!downloaded && libPath) {
+        for (const repo of MAVEN_REPOS) {
+          if (downloaded) break;
+          
+          const fallbackUrl = `${repo}/${libPath}`;
+          try {
+            await downloadFile(fallbackUrl, libFilePath, (progress) => {
+              if (onProgress) {
+                const overallProgress = (completed / total) * 100 + (progress / total);
+                onProgress(overallProgress);
+              }
+            });
+            console.log(`Downloaded ${library.name} from fallback repo: ${repo}`);
+            downloadedCount++;
+            downloaded = true;
+          } catch (error) {
+            // Try next repo
           }
-        });
-      } catch (error) {
-        console.warn(`Failed to download library ${library.name}: ${error.message}`);
+        }
+        
+        if (!downloaded) {
+          console.warn(`Failed to download library ${library.name} from all repos (404)`);
+          skippedCount++;
+        }
+      } else if (!downloaded) {
+        skippedCount++;
       }
     }
     
@@ -215,8 +274,10 @@ async function downloadLibraries(versionData, onProgress) {
         
         try {
           await downloadFile(nativeUrl, nativeFilePath);
+          downloadedCount++;
         } catch (error) {
           console.warn(`Failed to download native library ${library.name}: ${error.message}`);
+          skippedCount++;
         }
       }
     }
@@ -226,6 +287,8 @@ async function downloadLibraries(versionData, onProgress) {
       onProgress((completed / total) * 100);
     }
   }
+  
+  console.log(`Libraries downloaded: ${downloadedCount}, Failed: ${skippedCount}`);
 }
 
 async function downloadAssets(versionData, onProgress) {
@@ -596,6 +659,132 @@ function findAllJavaInstallations() {
   return javaInstallations.sort((a, b) => b.version - a.version);
 }
 
+function findBuiltInJavaInstallations() {
+  const javaPaths = [];
+  
+  // Try multiple possible app directories
+  let appDir = null;
+  const possibleDirs = [
+    process.env.PORTABLE_EXECUTABLE_DIR,                    // Portable mode
+    path.dirname(process.execPath),                         // Electron app exe
+    path.dirname(process.argv[0]),                          // Alternative
+    process.env.ELECTRON_EXE ? path.dirname(process.env.ELECTRON_EXE) : null,
+    __dirname,                                              // Current module directory
+  ].filter(Boolean);
+  
+  console.log("=== Built-in Java Detection Debug ===");
+  console.log(`process.execPath: ${process.execPath}`);
+  console.log(`__dirname: ${__dirname}`);
+  console.log(`process.argv[0]: ${process.argv[0]}`);
+  
+  // Try to find the java directory
+  for (const dir of possibleDirs) {
+    const javaDir = path.join(dir, "java");
+    console.log(`Checking for java directory at: ${javaDir} - Exists: ${fs.existsSync(javaDir)}`);
+    if (fs.existsSync(javaDir)) {
+      appDir = dir;
+      console.log(`✓ Found java directory at: ${javaDir}`);
+      break;
+    }
+  }
+  
+  if (!appDir) {
+    console.log("❌ Could not find java directory in any expected location");
+    return javaPaths;
+  }
+
+  const builtInJavaBaseDir = path.join(appDir, "java");
+  
+  try {
+    // Support Windows and cross-platform structure
+    const winJavaDir = path.join(builtInJavaBaseDir, "win");
+    const macJavaDir = path.join(builtInJavaBaseDir, "mac");
+    const linuxJavaDir = path.join(builtInJavaBaseDir, "linux");
+    
+    const osName = os.platform();
+    console.log(`Detected OS: ${osName}`);
+    
+    let platformJavaDir = null;
+    let executable = "javaw.exe";
+    
+    if (osName === "win32") {
+      platformJavaDir = winJavaDir;
+      executable = "javaw.exe";
+    } else if (osName === "darwin") {
+      platformJavaDir = macJavaDir;
+      executable = "java";
+    } else if (osName === "linux") {
+      platformJavaDir = linuxJavaDir;
+      executable = "java";
+    }
+    
+    console.log(`Platform Java directory: ${platformJavaDir}`);
+    console.log(`Platform Java directory exists: ${fs.existsSync(platformJavaDir)}`);
+    
+    if (!platformJavaDir || !fs.existsSync(platformJavaDir)) {
+      console.log(`❌ No built-in Java found for platform: ${osName}`);
+      return javaPaths;
+    }
+    
+    // Scan for Java installations following Zulu naming convention
+    const javaFolders = fs.readdirSync(platformJavaDir);
+    console.log(`Found ${javaFolders.length} folder(s): ${javaFolders.join(", ")}`);
+    
+    for (const folder of javaFolders) {
+      const folderPath = path.join(platformJavaDir, folder);
+      const stat = fs.statSync(folderPath);
+      
+      // Skip non-directories
+      if (!stat.isDirectory()) {
+        console.log(`  ❌ ${folder}: Not a directory, skipping`);
+        continue;
+      }
+      
+      const binPath = path.join(folderPath, "bin");
+      const javaExe = path.join(binPath, executable);
+      
+      console.log(`\nChecking folder: ${folder}`);
+      console.log(`  - Bin path exists: ${fs.existsSync(binPath)}`);
+      console.log(`  - Java exe exists: ${fs.existsSync(javaExe)}`);
+      
+      if (!fs.existsSync(binPath) || !fs.existsSync(javaExe)) {
+        console.log(`  ❌ Skipped: Missing bin directory or executable`);
+        continue;
+      }
+      
+      try {
+        // Extract version from folder name (e.g., "zulu8.92.0.19-ca-jre8.0.482-win_x64")
+        const versionMatch = folder.match(/zulu(\d+)/);
+        
+        if (!versionMatch) {
+          console.log(`  ❌ Skipped: Folder name doesn't contain 'zulu' + number`);
+          continue;
+        }
+        
+        const version = parseInt(versionMatch[1], 10);
+        
+        javaPaths.push({
+          version: version,
+          path: javaExe,
+          vendor: "Zulu (Built-in)",
+          isBuiltIn: true
+        });
+        
+        console.log(`  ✓ Found built-in Java ${version}`);
+      } catch (err) {
+        console.warn(`  ❌ Error processing Java folder ${folder}: ${err.message}`);
+      }
+    }
+    
+    console.log(`\n=== Total built-in Java found: ${javaPaths.length} ===\n`);
+    return javaPaths;
+  } catch (error) {
+    console.error(`❌ Error scanning built-in Java directory: ${error.message}`);
+    console.error(error.stack);
+    return javaPaths;
+  }
+}
+
 function getRequiredJavaVersion(versionData) {
   // Check javaVersion field in version data (most reliable)
   if (versionData.javaVersion) {
@@ -669,21 +858,64 @@ function selectBestJavaForVersion(requiredVersion, availableJava) {
 
 function buildClassPath(version, versionData) {
   const classPath = [];
+  const missingLibraries = [];
   
   const versionJar = path.join(VERSIONS_DIR, version, `${version}.jar`);
   if (fs.existsSync(versionJar)) {
     classPath.push(versionJar);
+  } else {
+    console.warn(`⚠️  Version JAR not found: ${versionJar}`);
+    missingLibraries.push(`${version}.jar`);
   }
   
   if (versionData.libraries) {
+    let addedCount = 0;
+    let skippedCount = 0;
+    let nativeOnlyCount = 0;
+    
     for (const library of versionData.libraries) {
-      if (shouldUseLibrary(library) && library.downloads && library.downloads.artifact) {
+      // Skip if this library shouldn't be used for this OS
+      if (!shouldUseLibrary(library)) {
+        continue;
+      }
+      
+      // Skip native-only libraries (those with classifiers but no artifact)
+      // These should only be extracted, not added to classpath
+      if (library.downloads && library.downloads.classifiers && !library.downloads.artifact) {
+        nativeOnlyCount++;
+        continue;
+      }
+      
+      let libFilePath = null;
+      
+      // Method 1: Use downloads.artifact if available (newer versions)
+      if (library.downloads && library.downloads.artifact) {
         const libPath = parseLibraryPath(library);
-        const libFilePath = path.join(LIBRARIES_DIR, libPath);
-        if (fs.existsSync(libFilePath)) {
+        libFilePath = path.join(LIBRARIES_DIR, libPath);
+      } else if (library.name) {
+        // Method 2: Parse from library name (older versions like 1.8)
+        const libPath = parseLibraryPath(library);
+        libFilePath = path.join(LIBRARIES_DIR, libPath);
+      }
+      
+      if (libFilePath) {
+        const exists = fs.existsSync(libFilePath);
+        if (exists) {
           classPath.push(libFilePath);
+          addedCount++;
+        } else {
+          skippedCount++;
+          missingLibraries.push(`${library.name} (${path.basename(libFilePath)})`);
         }
       }
+    }
+    
+    console.log(`Library classpath: Added ${addedCount} libraries, Skipped ${skippedCount} missing, ${nativeOnlyCount} natives (extracted separately)`);
+    
+    if (missingLibraries.length > 0 && missingLibraries.length <= 10) {
+      console.warn(`Missing libraries: ${missingLibraries.join(", ")}`);
+    } else if (missingLibraries.length > 10) {
+      console.warn(`Missing ${missingLibraries.length} libraries (too many to list)`);
     }
   }
   
@@ -758,22 +990,32 @@ function launchMinecraft(versionId, account, username, ramAllocation, onProgress
       const requiredJavaVersion = getRequiredJavaVersion(versionData);
       console.log(`Minecraft ${version} requires Java ${requiredJavaVersion}`);
       
-      // Find all available Java installations
-      const availableJava = findAllJavaInstallations();
+      // Find Java installations (prioritize built-in)
+      const builtInJava = findBuiltInJavaInstallations();
+      const systemJava = findAllJavaInstallations();
       
-      if (availableJava.length === 0) {
+      // Combine with built-in Java first (so it takes priority)
+      const availableJava = [...builtInJava, ...systemJava];
+      
+      // Remove duplicates based on path
+      const uniqueJava = Array.from(
+        new Map(availableJava.map(j => [j.path, j])).values()
+      );
+      
+      if (uniqueJava.length === 0) {
         reject(new Error(
-          `No Java installation found. Please install Java ${requiredJavaVersion} or later.\n` +
+          `No Java installation found. Please ensure built-in Java is included with the launcher, ` +
+          `or install Java ${requiredJavaVersion} or later.\n` +
           `You can download it from: https://adoptium.net/`
         ));
         return;
       }
       
-      console.log(`Found ${availableJava.length} Java installation(s):`);
-      availableJava.forEach(j => console.log(`  - Java ${j.version} (${j.vendor}) at ${j.path}`));
+      console.log(`Found ${uniqueJava.length} Java installation(s):`);
+      uniqueJava.forEach(j => console.log(`  - Java ${j.version} (${j.vendor}) at ${j.path}`));
       
       // Select best Java for this version
-      const selectedJava = selectBestJavaForVersion(requiredJavaVersion, availableJava);
+      const selectedJava = selectBestJavaForVersion(requiredJavaVersion, uniqueJava);
       
       if (!selectedJava) {
         const availableVersions = availableJava.map(j => j.version).join(", ");
@@ -791,8 +1033,16 @@ function launchMinecraft(versionId, account, username, ramAllocation, onProgress
       // Build classpath
       const classPath = buildClassPath(version, versionData);
       
+      console.log(`\n=== MINECRAFT LAUNCH DEBUG ===`);
+      console.log(`Classpath length: ${classPath.length} chars`);
+      console.log(`Total classpath entries: ${classPath.split(path.delimiter).length}`);
+      console.log(`Classpath preview: ${classPath.substring(0, 200)}...`);
+      console.log(`Classpath end: ...${classPath.substring(classPath.length - 100)}`);
+      
       // Get main class
       const mainClass = versionData.mainClass || "net.minecraft.client.main.Main";
+      console.log(`Main class: ${mainClass}`);
+      console.log(`Version data keys: ${Object.keys(versionData).join(", ")}`);
       
       //+++++++++++Auth args++++++++++++
       const { getSelectedAccount } = require("./accounts");
@@ -802,6 +1052,8 @@ const account = getSelectedAccount();
 if (!account) {
   throw new Error("No account selected");
 }
+
+console.log(`Account: ${account.username} (${account.type})`);
 
 let authArgs;
 
@@ -824,25 +1076,59 @@ if (account.type === "microsoft") {
 
                
       // Build JVM arguments
+      // Minecraft 1.8 uses minecraftArguments, newer versions use game arguments
+      let gameArgs = [];
+      
+      if (versionData.minecraftArguments) {
+        // Old format (Minecraft 1.8)
+        const argsTemplate = versionData.minecraftArguments;
+        gameArgs = argsTemplate
+          .replace("${auth_player_name}", account.username)
+          .replace("${version_name}", version)
+          .replace("${game_directory}", MINECRAFT_DIR)
+          .replace("${assets_root}", ASSETS_DIR)
+          .replace("${assets_index_name}", versionData.assetIndex?.id || "")
+          .replace("${auth_access_token}", account.type === "microsoft" ? account.accessToken : "0")
+          .replace("${user_type}", account.type === "microsoft" ? "msa" : "legacy")
+          .replace("${auth_uuid}", account.type === "microsoft" ? account.uuid : "00000000-0000-0000-0000-000000000000")
+          .replace("${user_properties}", "{}")
+          .split(" ");
+      } else {
+        // New format (Minecraft 1.13+)
+        gameArgs = [
+          "--version", version,
+          "--gameDir", MINECRAFT_DIR,
+          "--assetsDir", ASSETS_DIR,
+          "--assetIndex", versionData.assetIndex?.id || "",
+          ...authArgs,
+          "--versionType", "release"
+        ];
+      }
+      
       const jvmArgs = [
         `-Xmx${ramAllocation}M`,
         `-Xms${Math.floor(ramAllocation / 2)}M`,
         `-Djava.library.path=${nativesDir}`,
         "-cp", classPath,
         mainClass,
-      
-        "--version", version,
-        "--gameDir", MINECRAFT_DIR,
-        "--assetsDir", ASSETS_DIR,
-        "--assetIndex", versionData.assetIndex?.id || "",
-      
-        ...authArgs,
-      
-        "--versionType", "release"
+        ...gameArgs
       ];
       
-      
-      console.log(`Launching Minecraft ${version} with Java ${selectedJava.version}...`);
+      console.log(`\nTotal JVM args: ${jvmArgs.length}`);
+      console.log(`Memory settings: ${jvmArgs[0]}, ${jvmArgs[1]}`);
+      console.log(`Native library path: ${jvmArgs[2]}`);
+      console.log(`Main class: ${mainClass}`);
+      console.log(`Game version: ${version}`);
+      console.log(`Game dir: ${MINECRAFT_DIR}`);
+      console.log(`Username: ${account.username}`);
+      console.log(`Game args format: ${versionData.minecraftArguments ? "Old (minecraftArguments)" : "New (game args)"}`);
+      if (gameArgs.length <= 20) {
+        console.log(`Game args: ${gameArgs.join(" ")}`);
+      } else {
+        console.log(`Game args: ${gameArgs.slice(0, 10).join(" ")} ... (${gameArgs.length} total)`);
+      }
+      console.log(`\nLaunching with: ${selectedJava.path}`);
+      console.log(`=== END DEBUG ===\n`);
       
       // Launch Minecraft
       const child = spawn(selectedJava.path, jvmArgs, {
@@ -859,7 +1145,11 @@ if (account.type === "microsoft") {
       });
 
       child.on("close", (code) => {
-        console.log(`Minecraft exited with code ${code}`);
+        if (code === 0) {
+          console.log(`✓ Minecraft exited successfully`);
+        } else {
+          console.log(`❌ Minecraft exited with code ${code}`);
+        }
         resolve();
       });
     } catch (err) {
@@ -868,5 +1158,5 @@ if (account.type === "microsoft") {
   });
 }
 
-module.exports = { launchMinecraft, getVersions, findAllJavaInstallations };
+module.exports = { launchMinecraft, getVersions, findAllJavaInstallations, findBuiltInJavaInstallations };
 
