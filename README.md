@@ -14,11 +14,13 @@ That is normal for unsigned (unlicensed) applications.
 
 ## ☕ JAVA
 
-The launcher currently supports Java platforms, but you need to install following versions:
+The launcher currently supports all Java platforms, but you need to install following versions:
 
 - Java 8  
 - Java 17  
-- Java 21  
+- Java 21
+
+• Built-in java will be add..
 
 ---
 
