@@ -1,3 +1,7 @@
+
+<img width="800" height="225" alt="Adsız tasarım (4)" src="https://github.com/user-attachments/assets/764ade90-a4ba-4b47-a1d8-3cb13bc7767f" />
+
+
 # Voxel Launcher
 
 The **Voxel Launcher** is a JavaScript-based minimal launcher for Minecraft.  
@@ -18,56 +22,62 @@ The launcher currently supports all Java platforms, but you need to install foll
 
 - Java 8  
 - Java 17  
-- Java 21
+- Java 21  
 
-• Built-in java is avable for **Windows Devices** but for now linux needed legacy installation (for sadly..)
+• Built-in Java is available for **Linux and Windows devices**.  
+• On **macOS**, Java must be installed manually (legacy installation for now).
 
 ---
 
 ## 📦 Installation
 
-You can download the launcher from the **Releases** page and install it using the installer (**for Windows currently**).
+You can download the launcher from the **Releases** page and install it using the installer (**for Windows and Linux currently**).
 
-The launcher currently supports **Windows and Linux**.  
-Mac OS support will come soon ..
+The launcher currently supports **Windows, Linux, and macOS (from source)**.  
+Linux and macOS binary installers are planned for future releases.
 
 ---
 
-# 🐧 Run Voxel Launcher on Linux (from source)
+# 🍎 Run Voxel Launcher on macOS (from source)
 
-### 1️⃣ Install requirements
+### 1️⃣ Install requirements  
 Make sure you have the following installed:
 
 - Node.js 18+  
+```bash
 node -v
+````
 
-- npm (comes with Node)  
+* npm (comes with Node)
+
+```bash
 npm -v
+```
 
-- Java (required for Minecraft)  
+* Java (required for Minecraft)
+
+```bash
 java -version
+```
 
 ---
 
-### 🟢 UBUNTU / DEBIAN
+### 🟢 Install dependencies (macOS using Homebrew)
+
+If you don’t have Homebrew, install it first:
+[https://brew.sh](https://brew.sh)
+
 ```bash
-sudo apt update
-sudo apt install nodejs npm openjdk-17-jre
+brew update
+brew install node openjdk@17
 ```
 
-### 🔵 ARCH LINUX
-```bash
-sudo pacman -S nodejs npm jre17-openjdk
-```
+• Also install other Java platforms (8 & 21 if needed)
 
-### 🟣 FEDORA
-```bash
-sudo dnf install nodejs npm java-17-openjdk
-```
-• Also install other java platforms (8 & 21)
 ---
 
 ### 📥 CLONE THE REPOSITORY
+
 ```bash
 git clone https://github.com/DreamingNice/voxel-launcher.git
 cd voxel-launcher
@@ -76,6 +86,7 @@ cd voxel-launcher
 ---
 
 ### 📦 INSTALL DEPENDENCIES
+
 ```bash
 npm install
 ```
@@ -83,18 +94,20 @@ npm install
 ---
 
 ### ▶ RUN THE LAUNCHER (development mode)
+
 ```bash
 npm start
 ```
 
 ---
 
-# 🏗 BUILD LINUX     BINARIES
+# 🏗 BUILD macOS BINARIES
+
 ```bash
 npm run build
 ```
 
-- The output will be inside:
+* The output will be inside:
 
 ```bash
 dist/
@@ -102,9 +115,16 @@ dist/
 
 ---
 
+## 🐧 Linux Support
+
+Linux is fully supported it has support all futures of the launcher. 
+**if you encounter an issue please report us!!**
+
+---
+
 ## 📦 NPM and Node
 
-The launcher requires **Node 18+**.  
+The launcher requires **Node 18+**.
 If you are cloning the project, you need to install npm in the root of the project.
 
 ---
@@ -117,6 +137,12 @@ This project is licensed under the **MIT License**.
 
 ⚠ Not affiliated with **Mojang** or **Microsoft**!
 
+---
+
 🔹Also if you know how to code a launcher you can help us to devlop!
 
+---
+
 🎮 Happy Crafting with Voxel Launcher!
+
+---
