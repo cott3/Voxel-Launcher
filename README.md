@@ -132,7 +132,7 @@ If you are cloning the project, you need to install npm in the root of the proje
 
 ## 📜 License
 
-This project is licensed under the **MIT License**.
+This project is licensed under the **GNU GPL V3.0 License**.
 
 ---
 
