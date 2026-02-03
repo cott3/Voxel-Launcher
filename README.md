@@ -27,6 +27,7 @@ The launcher currently supports all Java platforms, but you need to install foll
 
 • Built-in Java is available for **Linux and Windows devices**.  
 • On **macOS**, Java must be installed manually (legacy installation for now).
+We recommend downloading a build from [Azul](https://www.azul.com/downloads/?package=jdk-fx#downloads-table-zulu)
 
 ---
 
