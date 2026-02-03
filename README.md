@@ -118,7 +118,7 @@ dist/
 ## 🐧 Linux Support
 
 Linux is fully supported it has support all futures of the launcher. 
-**if you encounter an issue please report us!!**
+**if you encounter an issue please report to us!!**
 
 ---
 
@@ -139,7 +139,7 @@ This project is licensed under the **MIT License**.
 
 ---
 
-🔹Also if you know how to code a launcher you can help us to devlop!
+🔹Also if you know how to code a launcher you can help us with devlopment!
 
 ---
 
