@@ -1,5 +1,5 @@
 
-<img width="800" height="225" alt="Adsız tasarım (4)" src="https://github.com/user-attachments/assets/764ade90-a4ba-4b47-a1d8-3cb13bc7767f" />
+<img width="800" height="225" alt="Launcher Logo" src="https://github.com/user-attachments/assets/764ade90-a4ba-4b47-a1d8-3cb13bc7767f" />
 
 
 # Voxel Launcher
@@ -13,6 +13,7 @@ The project is still in development, so there may be some bugs.
 
 When you open the launcher, SmartScreen may block the launcher.  
 That is normal for unsigned (unlicensed) applications.
+To run the laucnher, first click "More info" then "Run anyway".
 
 ---
 
@@ -33,7 +34,7 @@ The launcher currently supports all Java platforms, but you need to install foll
 
 You can download the launcher from the **Releases** page and install it using the installer (**for Windows and Linux currently**).
 
-The launcher currently supports **Windows, Linux, and macOS (from source)**.  
+The launcher currently supports **Windows, Linux, and macOS (requires building from source)**.  
 Linux and macOS binary installers are planned for future releases.
 
 ---
